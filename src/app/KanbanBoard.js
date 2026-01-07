@@ -13,29 +13,52 @@ function getInitialBoard() {
   ];
 }
 
+
 export default function KanbanBoard() {
-  const [columns, setColumns] = useState(getInitialBoard);
+  const [columns, setColumns] = useState(null);
   const [newColTitle, setNewColTitle] = useState("");
   const [dragged, setDragged] = useState(null);
 
+  // Only initialize board state on client after mount
   useEffect(() => {
-    localStorage.setItem("kanban-board", JSON.stringify(columns));
+    const saved = localStorage.getItem("kanban-board");
+    if (saved) {
+      setColumns(JSON.parse(saved));
+    } else {
+      setColumns([
+        { id: generateId(), title: "To Do", children: [{ id: generateId(), title: "Sample Task" }] },
+        { id: generateId(), title: "In Progress", children: [] },
+        { id: generateId(), title: "Done", children: [] },
+      ]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (columns) localStorage.setItem("kanban-board", JSON.stringify(columns));
   }, [columns]);
 
+  function generateId() {
+    // Use crypto.randomUUID if available, else fallback to Date.now + Math.random
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+  }
+
   const addColumn = () => {
-    if (!newColTitle.trim()) return;
+    if (!newColTitle.trim() || !columns) return;
     setColumns([
       ...columns,
-      { id: Date.now(), title: newColTitle, children: [] },
+      { id: generateId(), title: newColTitle, children: [] },
     ]);
     setNewColTitle("");
   };
 
   const addChild = (colId, childTitle) => {
-    if (!childTitle.trim()) return;
+    if (!childTitle.trim() || !columns) return;
     setColumns(columns.map(col =>
       col.id === colId
-        ? { ...col, children: [...col.children, { id: Date.now(), title: childTitle }] }
+        ? { ...col, children: [...col.children, { id: generateId(), title: childTitle }] }
         : col
     ));
   };
@@ -45,7 +68,7 @@ export default function KanbanBoard() {
   };
 
   const onDrop = (targetColIdx, targetChildIdx) => {
-    if (!dragged) return;
+    if (!dragged || !columns) return;
     const { colIdx, childIdx } = dragged;
     if (colIdx === targetColIdx && childIdx === targetChildIdx) return;
     const item = columns[colIdx].children[childIdx];
@@ -59,6 +82,11 @@ export default function KanbanBoard() {
     setColumns(newColumns);
     setDragged(null);
   };
+
+  if (!columns) {
+    // Prevent rendering until client-side state is ready
+    return null;
+  }
 
   return (
     <div className="container py-4">
