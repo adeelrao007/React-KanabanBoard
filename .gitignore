@@ -1,0 +1,4 @@
+.history
+*.log
+.next
+node_modules
