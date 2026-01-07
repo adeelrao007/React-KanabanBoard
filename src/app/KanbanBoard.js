@@ -1,68 +1,14 @@
-"use client";
-import { useEffect, useState } from "react";
 
-function getInitialBoard() {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem("kanban-board");
-    if (saved) return JSON.parse(saved);
-  }
-  return [
-    { id: 1, title: "To Do", children: [{ id: 1, title: "Sample Task" }] },
-    { id: 2, title: "In Progress", children: [] },
-    { id: 3, title: "Done", children: [] },
-  ];
-}
-
+import { useState } from "react";
+import useKanbanStore from "./store/kanbanStore";
 
 export default function KanbanBoard() {
-  const [columns, setColumns] = useState(null);
+  const columns = useKanbanStore(state => state.columns);
+  const addColumn = useKanbanStore(state => state.addColumn);
+  const addChild = useKanbanStore(state => state.addChild);
+  const moveChild = useKanbanStore(state => state.moveChild);
   const [newColTitle, setNewColTitle] = useState("");
   const [dragged, setDragged] = useState(null);
-
-  // Only initialize board state on client after mount
-  useEffect(() => {
-    const saved = localStorage.getItem("kanban-board");
-    if (saved) {
-      setColumns(JSON.parse(saved));
-    } else {
-      setColumns([
-        { id: generateId(), title: "To Do", children: [{ id: generateId(), title: "Sample Task" }] },
-        { id: generateId(), title: "In Progress", children: [] },
-        { id: generateId(), title: "Done", children: [] },
-      ]);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (columns) localStorage.setItem("kanban-board", JSON.stringify(columns));
-  }, [columns]);
-
-  function generateId() {
-    // Use crypto.randomUUID if available, else fallback to Date.now + Math.random
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-    return `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-  }
-
-  const addColumn = () => {
-    if (!newColTitle.trim() || !columns) return;
-    setColumns([
-      ...columns,
-      { id: generateId(), title: newColTitle, children: [] },
-    ]);
-    setNewColTitle("");
-  };
-
-  const addChild = (colId, childTitle) => {
-    if (!childTitle.trim() || !columns) return;
-    setColumns(columns.map(col =>
-      col.id === colId
-        ? { ...col, children: [...col.children, { id: generateId(), title: childTitle }] }
-        : col
-    ));
-  };
-
 
   const onDragStart = (colIdx, childIdx) => {
     setDragged({ colIdx, childIdx });
@@ -73,22 +19,14 @@ export default function KanbanBoard() {
   };
 
   const onDrop = (targetColIdx, targetChildIdx) => {
-    if (!dragged || !columns) return;
+    if (!dragged) return;
     const { colIdx, childIdx } = dragged;
     if (colIdx === targetColIdx && childIdx === targetChildIdx) return;
-    const item = columns[colIdx].children[childIdx];
-    let newColumns = columns.map(col => ({ ...col, children: [...col.children] }));
-    newColumns[colIdx].children.splice(childIdx, 1);
-    if (typeof targetChildIdx === "number") {
-      newColumns[targetColIdx].children.splice(targetChildIdx, 0, item);
-    } else {
-      newColumns[targetColIdx].children.push(item);
-    }
-    setColumns(newColumns);
+    moveChild(colIdx, childIdx, targetColIdx, targetChildIdx);
+    setDragged(null);
   };
 
   if (!columns) {
-    // Prevent rendering until client-side state is ready
     return null;
   }
 
@@ -102,7 +40,7 @@ export default function KanbanBoard() {
           value={newColTitle}
           onChange={e => setNewColTitle(e.target.value)}
         />
-        <button className="btn btn-primary" onClick={addColumn}>Add Column</button>
+        <button className="btn btn-primary" onClick={() => { addColumn(newColTitle); setNewColTitle(""); }}>Add Column</button>
       </div>
       <div className="row flex-nowrap overflow-auto">
         {columns.map((col, colIdx) => (
