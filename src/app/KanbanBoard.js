@@ -63,8 +63,13 @@ export default function KanbanBoard() {
     ));
   };
 
+
   const onDragStart = (colIdx, childIdx) => {
     setDragged({ colIdx, childIdx });
+  };
+
+  const onDragEnd = () => {
+    setDragged(null);
   };
 
   const onDrop = (targetColIdx, targetChildIdx) => {
@@ -80,7 +85,6 @@ export default function KanbanBoard() {
       newColumns[targetColIdx].children.push(item);
     }
     setColumns(newColumns);
-    setDragged(null);
   };
 
   if (!columns) {
@@ -113,6 +117,7 @@ export default function KanbanBoard() {
                     className="card mb-2 p-2 draggable"
                     draggable
                     onDragStart={() => onDragStart(colIdx, childIdx)}
+                    onDragEnd={onDragEnd}
                     onDragOver={e => e.preventDefault()}
                     onDrop={() => onDrop(colIdx, childIdx)}
                     style={{ cursor: "grab" }}
@@ -124,6 +129,7 @@ export default function KanbanBoard() {
                   className="dropzone"
                   onDragOver={e => e.preventDefault()}
                   onDrop={() => onDrop(colIdx)}
+                  onDragEnd={onDragEnd}
                   style={{ minHeight: 20 }}
                 />
               </div>
